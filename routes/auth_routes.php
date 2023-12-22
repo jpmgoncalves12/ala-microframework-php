@@ -8,9 +8,11 @@ $router->post(
     ]
 );
 
-$router->get(
-    '/auth/jwk/{context}',
-    [
-        'uses' => 'AuthPublicJwkController@process',
-    ]
-);
+if (config('app')['shouldUsePemToSignJWT']) {
+    $router->get(
+        '/auth/jwk/{context}',
+        [
+            'uses' => 'AuthPublicJwkController@process',
+        ]
+    );
+}
