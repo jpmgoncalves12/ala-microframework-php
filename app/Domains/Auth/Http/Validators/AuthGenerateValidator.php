@@ -12,8 +12,27 @@ class AuthGenerateValidator extends BaseValidator
      */
     public function getRules()
     {
+        if ($this->getConfig('app')['shouldUsePemToSignJWT']) {
+            return [
+                'context' => 'required|string',
+            ];
+        }
+
         return [
-            'context' => 'required|string',
+            'token' => 'required|string',
+            'secret' => 'required|string',
         ];
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * get laravel config
+     * @param string $config
+     * @return array|null
+     */
+    public function getConfig(
+        string $config
+    ): ?array {
+        return config($config);
     }
 }

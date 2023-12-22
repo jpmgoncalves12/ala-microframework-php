@@ -9,5 +9,6 @@ return [
     'jwt_app_secret' => env('JWT_APP_SECRET'),
     'key' => env('APP_KEY'),
     'cipher' => 'AES-256-CBC',
+    'shouldUsePemToSignJWT' => env('SHOULD_USE_PEM_TO_SIGN_JWT'),
     'secretsFolder' => __DIR__ . '/Secrets/',
 ];
