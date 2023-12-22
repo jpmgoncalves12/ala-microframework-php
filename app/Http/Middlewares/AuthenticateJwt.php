@@ -30,8 +30,19 @@ class AuthenticateJwt
 
         $token = str_replace('Bearer ', '', $token);
 
+        $pemFileName = $this->getConfig('token')[$context]['pemFileName'];
+        if (empty($pemFileName)) {
+            throw new InvalidCredentialsException('Invalid jwk Context', 401);
+        }
+
+        $privateKey = file_get_contents($this->getConfig('app')['secretsFolder'] . $pemFileName);
+
         $jwt = $this->newJwtToken(
-            $context
+            $privateKey,
+            $context,
+            900,
+            300,
+            true
         );
 
         try {
@@ -77,16 +88,35 @@ class AuthenticateJwt
 
     /**
      * @codeCoverageIgnore
-     * create and return a new jwt helper
+     * create and return jwt helper
      * @param string $context
-     * @return object
+     * @return JwtManager
      */
     public function newJwtToken(
-        string $context
-    ) {
+        string $privateKey,
+        string $context,
+        int $expire = 900,
+        int $renew = 300,
+        bool $useCertificate = false
+    ): JwtManager {
         return new JwtManager(
-            config('app.jwt_app_secret'),
-            $context
+            $privateKey,
+            $context,
+            $expire,
+            $renew,
+            $useCertificate
         );
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * get laravel config
+     * @param string $config
+     * @return array|null
+     */
+    public function getConfig(
+        string $config
+    ): ?array {
+        return config($config);
     }
 }

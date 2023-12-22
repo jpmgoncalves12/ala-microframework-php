@@ -7,3 +7,10 @@ $router->post(
         'validator' => 'App\Domains\Auth\Http\Validators\AuthGenerateValidator'
     ]
 );
+
+$router->get(
+    '/auth/jwk/{context}',
+    [
+        'uses' => 'AuthPublicJwkController@process',
+    ]
+);

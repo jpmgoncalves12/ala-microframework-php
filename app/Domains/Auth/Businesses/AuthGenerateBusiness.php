@@ -17,20 +17,17 @@ class AuthGenerateBusiness extends BaseBusiness
      */
     public function process(
         array $data,
-        string $type = 'api'
+        string $subject = 'api'
     ): array {
-        $auth = $this->getFromToken(
-            $data['token'],
-            $data['secret']
-        );
-
-        if (empty($auth)) {
+        $authConfig = $this->getConfigFromContext($data['context']);
+        if (empty($authConfig)) {
             throw new InvalidCredentialsException('Invalid credentials', 401);
         }
 
         return $this->generateToken(
-            $auth['name'],
-            $type
+            $data['context'],
+            $subject,
+            $authConfig['pemFileName']
         );
     }
 
@@ -41,15 +38,28 @@ class AuthGenerateBusiness extends BaseBusiness
      * @return array
      */
     public function generateToken(
-        string $audience,
-        string $subject
+        string $context,
+        string $subject,
+        string $pemFileName
     ): array {
+        $privateKey = file_get_contents($this->getConfig('app')['secretsFolder'] . $pemFileName);
         $jwt = $this->newJwtToken(
-            $audience
+            $privateKey,
+            $context,
+            900,
+            300,
+            true
         );
 
-        $jwtToken = $jwt->generate($audience, $subject);
-        $validate = date('Y-m-d H:i:s', time() + $jwt->getExpire());
+        $jwtToken = $jwt->generate(
+            $context,
+            $subject
+        );
+
+        $validate = date(
+            'Y-m-d H:i:s',
+            time() + $jwt->getExpire()
+        );
 
         return [
             'token' => $jwtToken,
@@ -63,18 +73,17 @@ class AuthGenerateBusiness extends BaseBusiness
      * @param string $secret
      * @return array|null
      */
-    public function getFromToken(
-        string $token,
-        string $secret
-    ): ?array {
-        $tokens = $this->getConfig('token.data');
-        $hasSecret = $tokens[$token]['secret'] ?? null;
+    public function getConfigFromContext(
+        string $context
+    ): array {
+        $tokens = $this->getConfig('token');
+        $config = $tokens[$context] ?? [];
 
-        if ($secret == $hasSecret) {
-            return $tokens[$token];
+        if (!empty($config)) {
+            return $config;
         }
 
-        return null;
+        return [];
     }
 
     /**
@@ -84,11 +93,18 @@ class AuthGenerateBusiness extends BaseBusiness
      * @return JwtManager
      */
     public function newJwtToken(
-        string $context
+        string $appSecret,
+        string $context,
+        int $expire = 900,
+        int $renew = 300,
+        bool $useCertificate = false
     ): JwtManager {
         return new JwtManager(
-            config('app.jwt_app_secret'),
-            $context
+            $appSecret,
+            $context,
+            $expire,
+            $renew,
+            $useCertificate
         );
     }
 }

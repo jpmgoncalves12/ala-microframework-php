@@ -9,4 +9,5 @@ return [
     'jwt_app_secret' => env('JWT_APP_SECRET'),
     'key' => env('APP_KEY'),
     'cipher' => 'AES-256-CBC',
+    'secretsFolder' => __DIR__ . '/Secrets/',
 ];

@@ -13,8 +13,7 @@ class AuthGenerateValidator extends BaseValidator
     public function getRules()
     {
         return [
-            'token' => 'required|string',
-            'secret' => 'required|string',
+            'context' => 'required|string',
         ];
     }
 }
