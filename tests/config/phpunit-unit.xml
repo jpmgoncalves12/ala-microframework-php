@@ -27,5 +27,6 @@
         <env name="APP_ENV" value="testing"/>
         <env name="CACHE_DRIVER" value="array"/>
         <env name="QUEUE_DRIVER" value="sync"/>
+        <env name="SHOULD_USE_PEM_TO_SIGN_JWT" value="0"/>
     </php>
 </phpunit>
