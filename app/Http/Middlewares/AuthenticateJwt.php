@@ -30,21 +30,7 @@ class AuthenticateJwt
 
         $token = str_replace('Bearer ', '', $token);
 
-        $pemFileName = $this->getConfig('token')[$context]['pemFileName'];
-        if (empty($pemFileName)) {
-            throw new InvalidCredentialsException('Invalid jwk Context', 401);
-        }
-
-        $privateKey = file_get_contents($this->getConfig('app')['secretsFolder'] . $pemFileName);
-
-        $jwt = $this->newJwtToken(
-            $privateKey,
-            $context,
-            900,
-            300,
-            true
-        );
-
+        $jwt = $this->getJwtToken($context);
         try {
             $jwt->isValid($token);
             $jwt->isOnTime($token);
@@ -84,6 +70,47 @@ class AuthenticateJwt
         $request->info = config('version.info');
 
         return $next($request);
+    }
+
+    /**
+     * @param string $context
+     * @throws InvalidCredentialsException
+     * @return JwtManager
+     */
+    public function getJwtToken(
+        string $context
+    ): JwtManager {
+        $config = $this->getConfig('app');
+        if (!$config['shouldUsePemToSignJWT']) {
+            $privateKey = $config['jwt_app_secret'];
+            return $this->newJwtToken(
+                $privateKey,
+                $context
+            );
+        }
+
+        $pemFileName = $this->getConfig('token')[$context]['pemFileName'];
+        if (empty($pemFileName)) {
+            throw new InvalidCredentialsException('Invalid jwk Context', 401);
+        }
+
+        $pemContent = $this->getPemContent($config['secretsFolder'] . $pemFileName);
+        return $this->newJwtToken(
+            $pemContent,
+            $context,
+            900,
+            300,
+            true
+        );
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * @param string $path
+     * @return bool|string
+     */
+    public function getPemContent($path) {
+        return file_get_contents($path);
     }
 
     /**

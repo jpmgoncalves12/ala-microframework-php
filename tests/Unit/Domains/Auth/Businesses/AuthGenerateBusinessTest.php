@@ -65,6 +65,70 @@ class AuthGenerateBusinessTest extends TestCase
     }
 
     /**
+     * @covers \App\Domains\Auth\Businesses\AuthGenerateBusiness::process
+     */
+    public function testProcessWithPem()
+    {
+        $now = date('Y-m-d H:i:s', time() + 900);
+
+        $data = [
+            'context' => 'app-test',
+        ];
+
+        $config = [
+            'app-test' => [
+                'pemFileName' => 'app-test.pem'
+            ]
+        ];
+
+        $response = [
+            'token' => 'token',
+            'valid_until' => $now
+        ];
+
+        $authGenerateBusiness = Mockery::mock(AuthGenerateBusiness::class)->makePartial();
+        $authGenerateBusiness->shouldReceive('getConfig')
+            ->with('app')
+            ->andReturn(['shouldUsePemToSignJWT' => 1])
+            ->shouldReceive('getConfig')
+            ->with('token')
+            ->andReturn($config)
+            ->shouldReceive('generatePemToken')
+            ->with(
+                $data['context'],
+                'api',
+                $config[$data['context']]['pemFileName']
+            )
+            ->andReturn($response);
+
+        $business = $authGenerateBusiness->process($data);
+
+        $this->assertEquals($response, $business);
+    }
+
+    /**
+     * @covers \App\Domains\Auth\Businesses\AuthGenerateBusiness::process
+     */
+    public function testProcessWithNotFoundPem()
+    {
+        $data = [
+            'context' => 'app-test',
+        ];
+
+        $authGenerateBusiness = Mockery::mock(AuthGenerateBusiness::class)->makePartial();
+        $authGenerateBusiness->shouldReceive('getConfig')
+            ->with('app')
+            ->andReturn(['shouldUsePemToSignJWT' => 1])
+            ->shouldReceive('getConfig')
+            ->with('token')
+            ->andReturn([]);
+
+        $this->expectExceptionObject(new \Exception('Invalid credentials', 401));
+
+        $authGenerateBusiness->process($data);
+    }
+
+    /**
      * @covers \App\Domains\Auth\Businesses\AuthGenerateBusiness::generateToken
      */
     public function testGenerateToken()
@@ -72,8 +136,15 @@ class AuthGenerateBusinessTest extends TestCase
         $audience = 'audience';
         $subject = 'subject';
 
+        $secret = 'secret';
+
         $token = 'token';
         $expire = 900;
+
+        $authGenerateBusiness = Mockery::mock(AuthGenerateBusiness::class)->makePartial();
+        $authGenerateBusiness->shouldReceive('getConfig')
+            ->with('app')
+            ->andReturn(['jwt_app_secret' => $secret]);
 
         $jwtManagerMock = Mockery::mock(JwtManager::class)
             ->shouldReceive('generate')
@@ -84,12 +155,70 @@ class AuthGenerateBusinessTest extends TestCase
             ->andReturn($expire)
             ->getMock();
 
-        $authGenerateBusiness = Mockery::mock(AuthGenerateBusiness::class)->makePartial();
         $authGenerateBusiness->shouldReceive('newJwtToken')
-            ->with($audience)
+            ->with(
+                $secret,
+                $audience
+            )
             ->andReturn($jwtManagerMock);
 
         $business = $authGenerateBusiness->generateToken($audience, $subject);
+
+        $this->assertEquals($token, $business['token']);
+    }
+
+    /**
+     * @covers \App\Domains\Auth\Businesses\AuthGenerateBusiness::generatePemToken
+     */
+    public function testGeneratePemToken()
+    {
+        $context = 'context';
+        $subject = 'subject';
+
+        $secretsPath = './secret/';
+        $pemFileName = 'app-test.pem';
+
+        $pemContent = '
+            -----BEGIN PRIVATE KEY-----
+            ...
+            -----END PRIVATE KEY-----
+        ';
+
+        $token = 'token';
+        $expire = 900;
+
+        $authGenerateBusiness = Mockery::mock(AuthGenerateBusiness::class)->makePartial();
+        $authGenerateBusiness->shouldReceive('getConfig')
+            ->with('app')
+            ->andReturn(['secretsFolder' => $secretsPath])
+            ->shouldReceive('getPemContent')
+            ->with($secretsPath . $pemFileName)
+            ->andReturn($pemContent);
+
+        $jwtManagerMock = Mockery::mock(JwtManager::class)
+            ->shouldReceive('generate')
+            ->with($context, $subject)
+            ->andReturn($token)
+            ->shouldReceive('getExpire')
+            ->withNoArgs()
+            ->andReturn($expire)
+            ->getMock();
+
+        $authGenerateBusiness->shouldReceive('newJwtToken')
+            ->with(
+                $pemContent,
+                $context,
+                900,
+                300,
+                true
+            )
+            ->andReturn($jwtManagerMock);
+
+        $business = $authGenerateBusiness->generatePemToken(
+            $context,
+            $subject,
+            $pemFileName
+        );
 
         $this->assertEquals($token, $business['token']);
     }

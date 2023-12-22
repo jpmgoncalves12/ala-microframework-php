@@ -20,15 +20,16 @@ class AuthGenerateBusiness extends BaseBusiness
         string $subject = 'api'
     ): array {
         if ($this->getConfig('app')['shouldUsePemToSignJWT']) {
-            $authConfig = $this->getConfigFromContext($data['context']);
-            if (empty($authConfig)) {
+            $tokens = $this->getConfig('token');
+            $config = $tokens[$data['context']] ?? [];
+            if (empty($config)) {
                 throw new InvalidCredentialsException('Invalid credentials', 401);
             }
-    
+
             return $this->generatePemToken(
                 $data['context'],
                 $subject,
-                $authConfig['pemFileName']
+                $config['pemFileName']
             );
         }
 
@@ -58,7 +59,7 @@ class AuthGenerateBusiness extends BaseBusiness
         string $subject
     ): array {
         $jwt = $this->newJwtToken(
-            config('app.jwt_app_secret'),
+            $this->getConfig('app')['jwt_app_secret'],
             $audience
         );
 
@@ -83,7 +84,10 @@ class AuthGenerateBusiness extends BaseBusiness
         string $subject,
         string $pemFileName
     ): array {
-        $privateKey = file_get_contents($this->getConfig('app')['secretsFolder'] . $pemFileName);
+        $privateKey = $this->getPemContent(
+            $this->getConfig('app')['secretsFolder'] . $pemFileName
+        );
+
         $jwt = $this->newJwtToken(
             $privateKey,
             $context,
@@ -129,22 +133,14 @@ class AuthGenerateBusiness extends BaseBusiness
     }
 
     /**
-     * search on config for token and secret to authenticate
-     * @param string $token
-     * @param string $secret
-     * @return array|null
+     * @codeCoverageIgnore
+     * @param string $path
+     * @return bool|string
      */
-    public function getConfigFromContext(
-        string $context
-    ): array {
-        $tokens = $this->getConfig('token');
-        $config = $tokens[$context] ?? [];
-
-        if (!empty($config)) {
-            return $config;
-        }
-
-        return [];
+    public function getPemContent(
+        string $path
+    ): bool|string {
+        return file_get_contents($path);
     }
 
     /**
