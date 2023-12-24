@@ -7,7 +7,7 @@ use Closure;
 use Exception;
 use JwtManager\JwtManager;
 
-class AuthenticateJwt
+class AuthenticateJwk
 {
     /**
      * handle an incoming request,
@@ -30,10 +30,7 @@ class AuthenticateJwt
 
         $token = str_replace('Bearer ', '', $token);
 
-        $jwt = $this->newJwtToken(
-            $context
-        );
-
+        $jwt = $this->getJwtToken($context);
         try {
             $jwt->isValid($token);
             $jwt->isOnTime($token);
@@ -76,17 +73,65 @@ class AuthenticateJwt
     }
 
     /**
-     * @codeCoverageIgnore
-     * create and return a new jwt helper
      * @param string $context
-     * @return object
+     * @throws InvalidCredentialsException
+     * @return JwtManager
+     */
+    public function getJwtToken(
+        string $context
+    ): JwtManager {
+        $privateFilePath = $this->getConfig('token')[$context]['privateFilePath'];
+        if (empty($privateFilePath)) {
+            throw new InvalidCredentialsException('Invalid jwk Context', 401);
+        }
+
+        $secretFolder = $this->getConfig('app')['secretsFolder'];
+        $pemContent = $this->getPemContent($secretFolder . $privateFilePath);
+        return $this->newJwtToken(
+            $pemContent,
+            $context,
+            900,
+            300,
+            true
+        );
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * @param string $path
+     * @return bool|string
+     */
+    public function getPemContent(
+        string $path
+    ): string|false {
+        return file_get_contents($path);
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * create and return jwt helper
+     * @param string $context
+     * @return JwtManager
      */
     public function newJwtToken(
+        string $privateKey,
         string $context
-    ) {
+    ): JwtManager {
         return new JwtManager(
-            config('app.jwt_app_secret'),
+            $privateKey,
             $context
         );
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * get laravel config
+     * @param string $config
+     * @return array|null
+     */
+    public function getConfig(
+        string $config
+    ): ?array {
+        return config($config);
     }
 }

@@ -8,10 +8,10 @@ use Mockery;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\HeaderBag;
 
-class AuthenticateJwtTest extends TestCase
+class AuthenticateJwkTest extends TestCase
 {
     /**
-     * @covers \App\Http\Middlewares\AuthenticateJwt::handle
+     * @covers \App\Http\Middlewares\AuthenticateJwk::handle
      */
     public function testHandleAndMissingAuthorization()
     {
@@ -28,7 +28,7 @@ class AuthenticateJwtTest extends TestCase
             'headers' => $headerBagMock,
         ];
 
-        $middleware = new AuthenticateJwt;
+        $middleware = new AuthenticateJwk;
 
         $this->expectExceptionObject(new \Exception('Missing authorization', 401));
 
@@ -37,7 +37,7 @@ class AuthenticateJwtTest extends TestCase
     }
 
     /**
-     * @covers \App\Http\Middlewares\AuthenticateJwt::handle
+     * @covers \App\Http\Middlewares\AuthenticateJwk::handle
      */
     public function testHandleInvalidTokenOrExpiredToken()
     {
@@ -70,8 +70,8 @@ class AuthenticateJwtTest extends TestCase
             'headers' => $headerBagMock,
         ];
 
-        $middleware = Mockery::mock(AuthenticateJwt::class)->makePartial();
-        $middleware->shouldReceive('newJwtToken')
+        $middleware = Mockery::mock(AuthenticateJwk::class)->makePartial();
+        $middleware->shouldReceive('getJwtToken')
             ->with('test')
             ->andReturn($jwtManager);
 
@@ -85,7 +85,7 @@ class AuthenticateJwtTest extends TestCase
     }
 
     /**
-     * @covers \App\Http\Middlewares\AuthenticateJwt::handle
+     * @covers \App\Http\Middlewares\AuthenticateJwk::handle
      */
     public function testHandleInvalidSubject()
     {
@@ -128,8 +128,8 @@ class AuthenticateJwtTest extends TestCase
             'headers' => $headerBagMock,
         ];
 
-        $middleware = Mockery::mock(AuthenticateJwt::class)->makePartial();
-        $middleware->shouldReceive('newJwtToken')
+        $middleware = Mockery::mock(AuthenticateJwk::class)->makePartial();
+        $middleware->shouldReceive('getJwtToken')
             ->with('test')
             ->andReturn($jwtManager);
 
@@ -143,7 +143,7 @@ class AuthenticateJwtTest extends TestCase
     }
 
     /**
-     * @covers \App\Http\Middlewares\AuthenticateJwt::handle
+     * @covers \App\Http\Middlewares\AuthenticateJwk::handle
      */
     public function testHandleInvalidContext()
     {
@@ -186,8 +186,8 @@ class AuthenticateJwtTest extends TestCase
             'headers' => $headerBagMock,
         ];
 
-        $middleware = Mockery::mock(AuthenticateJwt::class)->makePartial();
-        $middleware->shouldReceive('newJwtToken')
+        $middleware = Mockery::mock(AuthenticateJwk::class)->makePartial();
+        $middleware->shouldReceive('getJwtToken')
             ->with('test')
             ->andReturn($jwtManager);
 
@@ -201,7 +201,7 @@ class AuthenticateJwtTest extends TestCase
     }
 
     /**
-     * @covers \App\Http\Middlewares\AuthenticateJwt::handle
+     * @covers \App\Http\Middlewares\AuthenticateJwk::handle
      */
     public function testHandleAndDontNeedRefresh()
     {
@@ -244,8 +244,8 @@ class AuthenticateJwtTest extends TestCase
             'headers' => $headerBagMock,
         ];
 
-        $middleware = Mockery::mock(AuthenticateJwt::class)->makePartial();
-        $middleware->shouldReceive('newJwtToken')
+        $middleware = Mockery::mock(AuthenticateJwk::class)->makePartial();
+        $middleware->shouldReceive('getJwtToken')
             ->with('test')
             ->andReturn($jwtManager);
 
@@ -258,7 +258,7 @@ class AuthenticateJwtTest extends TestCase
     }
 
     /**
-     * @covers \App\Http\Middlewares\AuthenticateJwt::handle
+     * @covers \App\Http\Middlewares\AuthenticateJwk::handle
      */
     public function testHandleAndNeedToRefresh()
     {
@@ -301,14 +301,93 @@ class AuthenticateJwtTest extends TestCase
             'headers' => $headerBagMock,
         ];
 
-        $middleware = Mockery::mock(AuthenticateJwt::class)->makePartial();
-        $middleware->shouldReceive('newJwtToken')
+        $middleware = Mockery::mock(AuthenticateJwk::class)->makePartial();
+        $middleware->shouldReceive('getJwtToken')
             ->with('test')
             ->andReturn($jwtManager);
 
         $middleware->handle($requestMock, function ($request) use ($jwt) {
             $this->assertEquals($request->jwtToken['token'], '1234567');
         });
+    }
+
+    /**
+     * @covers \App\Http\Middlewares\AuthenticateJwk::getJwtToken
+     */
+    public function testGetJwtPemToken()
+    {
+        $context = 'test';
+        $config = [
+            'usePemToSignJWT' => 1,
+            'secretsFolder' => './secrets/'
+        ];
+
+        $configToken = [
+            'test' => [
+                'privateFilePath' => 'test.pem'
+            ]
+        ];
+
+        $pemContent = '
+            -----BEGIN PRIVATE KEY-----
+            ...
+            -----END PRIVATE KEY-----
+        ';
+
+        $jwtManager = Mockery::spy(JwtManager::class);
+
+        $middleware = Mockery::mock(AuthenticateJwk::class)->makePartial();
+        $middleware->shouldReceive('getConfig')
+            ->with('app')
+            ->andReturn($config)
+            ->shouldReceive('getConfig')
+            ->with('token')
+            ->andReturn($configToken);
+
+        $middleware->shouldReceive('getPemContent')
+            ->with($config['secretsFolder'] . $configToken[$context]['privateFilePath'])
+            ->andReturn($pemContent)
+            ->shouldReceive('newJwtToken')
+            ->with(
+                $pemContent,
+                $context,
+                900,
+                300,
+                true
+            )
+            ->andReturn($jwtManager);
+
+        $result = $middleware->getJwtToken($context);
+        $this->assertInstanceOf(JwtManager::class, $result);
+    }
+
+    /**
+     * @covers \App\Http\Middlewares\AuthenticateJwk::getJwtToken
+     */
+    public function testGetJwtPemTokenError()
+    {
+        $context = 'test';
+        $config = [
+            'usePemToSignJWT' => 1,
+            'secretsFolder' => './secrets/'
+        ];
+
+        $configToken = [
+            'test' => [
+                'privateFilePath' => ''
+            ]
+        ];
+
+        $middleware = Mockery::mock(AuthenticateJwk::class)->makePartial();
+        $middleware->shouldReceive('getConfig')
+            ->with('app')
+            ->andReturn($config)
+            ->shouldReceive('getConfig')
+            ->with('token')
+            ->andReturn($configToken);
+
+        $this->expectExceptionObject(new \Exception('Invalid jwk Context', 401));
+        $middleware->getJwtToken($context);
     }
 
     protected function tearDown(): void

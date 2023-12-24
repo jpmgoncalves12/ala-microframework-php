@@ -9,5 +9,6 @@
 /tests/coverage/*
 /tests/config/.phpunit.cache
 /vendor
-/config/secrets/*.pem
+/config/secrets/**/*.pem
+/config/secrets/**/*.pub
 !/**/.gitkeep

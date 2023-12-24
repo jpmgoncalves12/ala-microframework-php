@@ -1,18 +1,19 @@
 <?php
 
+if (config('app')['usePemToSignJWT']) {
+    return [
+        'app-test' => [
+            'privateFilePath' => 'appTest/app-test.pem',
+            'publicFilePath' => 'appTest/app-test.pub'
+        ]
+    ];
+}
+
 /**
  * https://ulidgenerator.com/
  * https://emn178.github.io/online-tools/sha512_256.html
  * Tokens and secrets are created by encrypting an ulid with SHA512/256
  */
-
-if (config('app')['shouldUsePemToSignJWT']) {
-    return [
-        'app-test' => [
-            'pemFileName' => 'app-test.pem'
-        ]
-    ];
-}
 
 return [
     'data' => [

@@ -19,7 +19,7 @@ class AuthGenerateBusiness extends BaseBusiness
         array $data,
         string $subject = 'api'
     ): array {
-        if ($this->getConfig('app')['shouldUsePemToSignJWT']) {
+        if ($this->getConfig('app')['usePemToSignJWT']) {
             $tokens = $this->getConfig('token');
             $config = $tokens[$data['context']] ?? [];
             if (empty($config)) {
@@ -29,7 +29,7 @@ class AuthGenerateBusiness extends BaseBusiness
             return $this->generatePemToken(
                 $data['context'],
                 $subject,
-                $config['pemFileName']
+                $config['privateFilePath']
             );
         }
 
@@ -76,24 +76,21 @@ class AuthGenerateBusiness extends BaseBusiness
      * generate token
      * @param string $audience
      * @param string $subject
-     * @param string $pemFileName
+     * @param string $privateFilePath
      * @return array
      */
     public function generatePemToken(
         string $context,
         string $subject,
-        string $pemFileName
+        string $privateFilePath
     ): array {
         $privateKey = $this->getPemContent(
-            $this->getConfig('app')['secretsFolder'] . $pemFileName
+            $this->getConfig('app')['secretsFolder'] . $privateFilePath
         );
 
         $jwt = $this->newJwtToken(
             $privateKey,
-            $context,
-            900,
-            300,
-            true
+            $context
         );
 
         $jwtToken = $jwt->generate(
@@ -139,7 +136,7 @@ class AuthGenerateBusiness extends BaseBusiness
      */
     public function getPemContent(
         string $path
-    ): bool|string {
+    ) {
         return file_get_contents($path);
     }
 
@@ -151,17 +148,11 @@ class AuthGenerateBusiness extends BaseBusiness
      */
     public function newJwtToken(
         string $appSecret,
-        string $context,
-        int $expire = 900,
-        int $renew = 300,
-        bool $useCertificate = false
+        string $context
     ): JwtManager {
         return new JwtManager(
             $appSecret,
-            $context,
-            $expire,
-            $renew,
-            $useCertificate
+            $context
         );
     }
 }

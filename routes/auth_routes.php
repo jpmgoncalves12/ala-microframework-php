@@ -8,7 +8,7 @@ $router->post(
     ]
 );
 
-if (config('app')['shouldUsePemToSignJWT']) {
+if (config('app')['usePemToSignJWT']) {
     $router->get(
         '/auth/jwk/{context}',
         [

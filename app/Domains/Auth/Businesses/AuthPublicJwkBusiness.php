@@ -4,6 +4,7 @@ namespace App\Domains\Auth\Businesses;
 
 use App\Businesses\BaseBusiness;
 use App\Exceptions\Custom\InvalidCredentialsException;
+use App\Exceptions\Custom\InvalidJwkException;
 
 class AuthPublicJwkBusiness extends BaseBusiness
 {
@@ -20,18 +21,21 @@ class AuthPublicJwkBusiness extends BaseBusiness
         $pemsArray = $this->getConfig('token');
         if (
             empty($pemsArray[$context]) ||
-            empty($pemsArray[$context]['pemFileName'])
+            empty($pemsArray[$context]['publicFilePath'])
         ) {
             throw new InvalidCredentialsException('Invalid credentials', 401);
         }
 
-        $pemFileName = $pemsArray[$context]['pemFileName'];
-        $privateKey = file_get_contents($this->getConfig('app')['secretsFolder'] . $pemFileName);
-        if (empty($privateKey)) {
-            throw new InvalidCredentialsException('Invalid credentials', 401);
+        $publicFilePath = $pemsArray[$context]['publicFilePath'];
+        $publicKeyContent = $this->getFileContent(
+            $this->getConfig('app')['secretsFolder'] . $publicFilePath
+        );
+
+        if (empty($publicKeyContent)) {
+            throw new InvalidJwkException('Failed to get jwk details', 404);
         }
 
-        $keyInfo = openssl_pkey_get_details(openssl_pkey_get_public($privateKey));
+        $keyInfo = $this->getOpenSslDetails($publicKeyContent);
         $jwk = [
             'keys' => [
                 [
@@ -43,5 +47,29 @@ class AuthPublicJwkBusiness extends BaseBusiness
         ];
 
         return $jwk;
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * @param string $path
+     * @return bool|string
+     */
+    public function getOpenSslDetails(
+        string $content
+    ) {
+        return openssl_pkey_get_details(
+            openssl_get_publickey($content)
+        );
+    }
+
+    /**
+     * @codeCoverageIgnore
+     * @param string $path
+     * @return bool|string
+     */
+    public function getFileContent(
+        string $path
+    ) {
+        return file_get_contents($path);
     }
 }

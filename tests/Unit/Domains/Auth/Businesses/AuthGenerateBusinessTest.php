@@ -77,7 +77,7 @@ class AuthGenerateBusinessTest extends TestCase
 
         $config = [
             'app-test' => [
-                'pemFileName' => 'app-test.pem'
+                'privateFilePath' => 'app-test.pem'
             ]
         ];
 
@@ -89,7 +89,7 @@ class AuthGenerateBusinessTest extends TestCase
         $authGenerateBusiness = Mockery::mock(AuthGenerateBusiness::class)->makePartial();
         $authGenerateBusiness->shouldReceive('getConfig')
             ->with('app')
-            ->andReturn(['shouldUsePemToSignJWT' => 1])
+            ->andReturn(['usePemToSignJWT' => 1])
             ->shouldReceive('getConfig')
             ->with('token')
             ->andReturn($config)
@@ -97,7 +97,7 @@ class AuthGenerateBusinessTest extends TestCase
             ->with(
                 $data['context'],
                 'api',
-                $config[$data['context']]['pemFileName']
+                $config[$data['context']]['privateFilePath']
             )
             ->andReturn($response);
 
@@ -118,7 +118,7 @@ class AuthGenerateBusinessTest extends TestCase
         $authGenerateBusiness = Mockery::mock(AuthGenerateBusiness::class)->makePartial();
         $authGenerateBusiness->shouldReceive('getConfig')
             ->with('app')
-            ->andReturn(['shouldUsePemToSignJWT' => 1])
+            ->andReturn(['usePemToSignJWT' => 1])
             ->shouldReceive('getConfig')
             ->with('token')
             ->andReturn([]);
@@ -176,7 +176,7 @@ class AuthGenerateBusinessTest extends TestCase
         $subject = 'subject';
 
         $secretsPath = './secret/';
-        $pemFileName = 'app-test.pem';
+        $privateFilePath = 'app-test.pem';
 
         $pemContent = '
             -----BEGIN PRIVATE KEY-----
@@ -192,7 +192,7 @@ class AuthGenerateBusinessTest extends TestCase
             ->with('app')
             ->andReturn(['secretsFolder' => $secretsPath])
             ->shouldReceive('getPemContent')
-            ->with($secretsPath . $pemFileName)
+            ->with($secretsPath . $privateFilePath)
             ->andReturn($pemContent);
 
         $jwtManagerMock = Mockery::mock(JwtManager::class)
@@ -207,17 +207,14 @@ class AuthGenerateBusinessTest extends TestCase
         $authGenerateBusiness->shouldReceive('newJwtToken')
             ->with(
                 $pemContent,
-                $context,
-                900,
-                300,
-                true
+                $context
             )
             ->andReturn($jwtManagerMock);
 
         $business = $authGenerateBusiness->generatePemToken(
             $context,
             $subject,
-            $pemFileName
+            $privateFilePath
         );
 
         $this->assertEquals($token, $business['token']);

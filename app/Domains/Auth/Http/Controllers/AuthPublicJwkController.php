@@ -10,7 +10,6 @@ use ResponseJson\ResponseJson;
 class AuthPublicJwkController extends BaseController
 {
     private $authPublicJwkBusiness;
-    private $response;
 
     /**
      * constructor
@@ -18,12 +17,9 @@ class AuthPublicJwkController extends BaseController
      * @param ResponseJson $response
      * @return void
      */
-    public function __construct(
-        AuthPublicJwkBusiness $authPublicJwkBusiness,
-        ResponseJson $response
-    ) {
+    public function __construct(AuthPublicJwkBusiness $authPublicJwkBusiness)
+    {
         $this->authPublicJwkBusiness = $authPublicJwkBusiness;
-        $this->response = $response;
     }
 
     /**
@@ -32,22 +28,14 @@ class AuthPublicJwkController extends BaseController
      * @param Request $request
      */
     public function process(
-        string $context,
-        Request $request
+        string $context
     ) {
         $dataResponse = $this->authPublicJwkBusiness->process(
             $context
         );
 
-        $result = $this->response->response(
-            $request->requestId,
-            $request->startProfile,
-            $request->jwtToken,
-            $dataResponse
-        );
-
         return response()->json(
-            $result,
+            $dataResponse,
             200,
             [],
             JSON_UNESCAPED_SLASHES |

@@ -2,6 +2,11 @@
 
 require __DIR__.'/list_routes.php';
 
+$authMiddleware = 'auth';
+if (config('app.usePemToSignJWT')) {
+    $authMiddleware = 'authJwk';
+}
+
 $listConfigs = [
     [
         'middleware' => [],
@@ -20,7 +25,7 @@ $listConfigs = [
     ],
     [
         'middleware' => [
-            'auth',
+            $authMiddleware,
             'start',
             'suffix',
             'validator',

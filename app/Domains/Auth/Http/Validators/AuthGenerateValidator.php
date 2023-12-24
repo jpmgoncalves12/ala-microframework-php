@@ -12,7 +12,7 @@ class AuthGenerateValidator extends BaseValidator
      */
     public function getRules()
     {
-        if ($this->getConfig('app')['shouldUsePemToSignJWT']) {
+        if ($this->getConfig('app')['usePemToSignJWT']) {
             return [
                 'context' => 'required|string',
             ];
